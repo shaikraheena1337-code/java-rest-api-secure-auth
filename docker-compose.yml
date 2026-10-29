@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: secure-api-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: secure_api
+      MYSQL_USER: secure_api_user
+      MYSQL_PASSWORD: change-this-db-password
+      MYSQL_ROOT_PASSWORD: change-this-root-password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pchange-this-root-password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+volumes:
+  mysql_data:

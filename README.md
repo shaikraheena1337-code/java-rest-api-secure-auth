@@ -1,96 +1,112 @@
-# Secure REST API with JWT Authentication
+# Secure Java REST API — Raheena Shaik
 
-A secure and scalable REST API built using **Java, Spring Boot, Spring Security, JWT, and MySQL**. This project demonstrates secure user authentication, password encryption, protected endpoints, and database integration following standard backend development practices.
+A Spring Boot REST API demonstrating user registration, login, BCrypt password hashing, signed JWT bearer tokens, protected endpoints, validation, and MySQL persistence.
 
-## Overview
-
-This project implements a RESTful backend service with user registration and login functionality. It uses JSON Web Tokens (JWT) to authenticate users and protect API endpoints, while Spring Security manages access control and BCrypt securely hashes user passwords.
-
-## Features
-
-- **User Registration** — Register users with validated credentials.
-- **Secure Login** — Authenticate users using their credentials.
-- **Password Hashing** — Store passwords securely using BCrypt.
-- **JWT Authentication** — Generate and validate tokens for authenticated requests.
-- **Protected Endpoints** — Restrict access to authenticated users.
-- **MySQL Integration** — Persist user data in a relational database.
-- **RESTful API Design** — Organize backend functionality through HTTP endpoints.
-- **Configuration Management** — Use environment variables for sensitive configuration.
-
-## Technology Stack
-
-- **Language:** Java 21
-- **Framework:** Spring Boot
-- **Security:** Spring Security, JWT
-- **Database:** MySQL
-- **Build Tool:** Apache Maven
-- **ORM:** Spring Data JPA / Hibernate
-- **Password Hashing:** BCrypt
+## Stack
+- Java 17, Spring Boot 3.4.5, Maven
+- Spring Web, Spring Security, Spring Data JPA, Bean Validation
+- MySQL 8.4
+- JJWT 0.12.6
 
 ## Prerequisites
+Install Java 17+, Maven 3.9+, and Docker Desktop (or a local MySQL 8 instance).
 
-Before running the application, install:
-
-- Java 21 or compatible JDK
-- Apache Maven
-- MySQL Server
-
-## Getting Started
-
-1. Clone the repository:
-
+## Run locally
+1. Open a terminal in the project folder.
+2. Start the database:
    ```bash
-   git clone https://github.com/shaikraheena1337-code/java-rest-api-secure-auth.git
-   cd java-rest-api-secure-auth
+   docker compose up -d
    ```
-
-2. Create the MySQL database and configure the database connection using environment variables.
-
-3. Configure the following environment variables:
-
-   - `DB_URL` — MySQL connection URL
-   - `DB_USERNAME` — Database username
-   - `DB_PASSWORD` — Database password
-   - `APP_JWT_SECRET` — A strong, randomly generated secret of at least 32 bytes
-   - `JWT_EXPIRATION_SECONDS` — Token expiration time in seconds (optional; defaults to 3600)
-
-4. Build the application:
-
+3. Set a strong JWT secret (PowerShell example):
+   ```powershell
+   $env:APP_JWT_SECRET = "replace-with-a-random-secret-at-least-32-characters"
+   ```
+   macOS/Linux:
    ```bash
-   mvn clean package
+   export APP_JWT_SECRET='replace-with-a-random-secret-at-least-32-characters'
    ```
-
-5. Run the application:
-
+4. Run the app:
    ```bash
    mvn spring-boot:run
    ```
+5. API base URL: `http://localhost:8080`
 
-The application runs on port `8080` by default.
+The sample database password is for local development only. Change all credentials before deploying. Never commit real secrets.
 
-## API Functionality
+## API endpoints
 
-| Functionality | Description |
-|---|---|
-| User Registration | Creates a user account |
-| User Login | Validates credentials and issues a JWT |
-| Authenticated Access | Allows access to protected endpoints using a valid token |
-| Database Operations | Stores and retrieves user information |
+### 1) Register — public
+`POST /api/auth/register`
+```json
+{
+  "name": "Raheena Shaik",
+  "email": "raheena@example.com",
+  "password": "StrongPass123!"
+}
+```
+Returns `201 Created` and a user profile. Password hashes are never returned.
 
-Use the API routes defined in the source code when testing requests with Postman or another API client.
+### 2) Login — public
+`POST /api/auth/login`
+```json
+{
+  "email": "raheena@example.com",
+  "password": "StrongPass123!"
+}
+```
+Returns a bearer token:
+```json
+{
+  "tokenType": "Bearer",
+  "accessToken": "<JWT>",
+  "expiresInSeconds": 3600
+}
+```
 
-## Security Practices
+### 3) Get current user — protected
+`GET /api/users/me`
+Header:
+`Authorization: Bearer <JWT>`
 
-- Passwords are hashed using BCrypt rather than stored as plain text.
-- JWTs are used to authenticate requests to protected endpoints.
-- Sensitive configuration is supplied through environment variables.
-- Database access is configured separately from application source code.
+Returns the authenticated user's ID, name, and email. Without a valid token, the endpoint returns `401 Unauthorized`.
 
-## Project Purpose
+## Test with curl
 
-This project was developed to strengthen practical skills in Java backend development, REST API design, authentication, authorization, database integration, and application security.
+Register:
+```bash
+curl -i -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Raheena Shaik","email":"raheena@example.com","password":"StrongPass123!"}'
+```
 
-## Author
+Login:
+```bash
+curl -i -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"raheena@example.com","password":"StrongPass123!"}'
+```
 
-**Raheena Shaik**  
-GitHub: [shaikraheena1337-code](https://github.com/shaikraheena1337-code)
+Copy `accessToken` from the login response, then:
+```bash
+curl -i http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer PASTE_TOKEN_HERE"
+```
+
+## Security notes
+- Passwords are stored as BCrypt hashes.
+- JWTs are signed and expire after one hour by default.
+- All endpoints except registration, login, and health are authenticated.
+- The application is stateless; no server-side session is used.
+- Request bodies are validated; duplicate email addresses return `409 Conflict`.
+- Do not use the sample database credentials in production.
+- For production, use HTTPS, managed secrets, database migrations (Flyway/Liquibase), rate limiting, security monitoring, and a refresh-token/revocation strategy as required.
+- This is an internship demonstration project; “production-ready” deployment still requires environment-specific hardening and tests.
+
+## Database schema
+`app_users`:
+- `id`: generated primary key
+- `name`: required, max 80 characters
+- `email`: required, unique, max 190 characters
+- `password_hash`: required BCrypt hash; never exposed through API responses
+
+Hibernate creates/updates the schema for local development. Use versioned migrations rather than `ddl-auto=update` in production.
